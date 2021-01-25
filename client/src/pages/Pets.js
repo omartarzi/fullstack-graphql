@@ -5,25 +5,43 @@ import PetsList from '../components/PetsList'
 import NewPetModal from '../components/NewPetModal'
 import Loader from '../components/Loader'
 
+/*
+@ stuff:
+@skip (skip field if pet is not passed for example
+)
+@defer, @live
+@deprecated (allows you to deprecate a field to let developers know the field is no longer used and you can put a note) (so that you don't need to version your schema)
+*/
+
+const PETS_FIELDS = gql`
+  fragment PetsFields on Pet  {
+    id
+    name
+    type
+    img
+    vaccinated @client
+    owner {
+        id
+        age @client
+      }
+  }
+`
+
 const ALL_PETS = gql`
   query AllPets {
     pets {
-      id
-      name
-      type
-      img
+      ...PetsFields
     }
   }
+  ${PETS_FIELDS}
 `
 const NEW_PET = gql`
   mutation CreateAPet($newPet:NewPetInput!) {
     addPet(input: $newPet) {
-      id
-      type
-      name
-      img
+      ...PetsFields
     }
   }
+  ${PETS_FIELDS}
 `
 
 export default function Pets () {
@@ -42,11 +60,21 @@ export default function Pets () {
   const onSubmit = input => {
     setModal(false)
     createPet({
-      variables: {newPet: input}
+      variables: {newPet: input},
+      optimisticResponse: {
+        __typename: "Mutation",
+        addPet: {
+          __typename: 'Pet',
+          id: Math.floor(Math.random * 1000) + Date.now(),
+          name: input.name,
+          img: 'https://via.placeholder.com/300',
+          type: input.type
+        }
+      }
     })
   }
 
-  if (loading || newPet.loading) {
+  if (loading) { // removed || newPet.loading
     return <Loader />
   }
 
